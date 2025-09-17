@@ -1,0 +1,38 @@
+name: C++ CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main", "feature/add-ci"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-test:
+    name: Build & Test C++ Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build essentials
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+      - name: Build all .cpp files
+        run: |
+          mkdir -p build
+          g++ -std=c++17 src/*.cpp -o build/app
+          echo "Build completed successfully"
+
+      - name: Run tests (if any)
+        run: |
+          if [ -f tests/run_tests.sh ]; then
+            chmod +x tests/run_tests.sh
+            ./tests/run_tests.sh
+          else
+            echo "No test script found, skipping tests"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-build
+          path: build/app
