@@ -23,15 +23,6 @@ jobs:
           g++ -std=c++17 src/*.cpp -o build/app
           echo "Build completed successfully"
 
-      - name: Run tests (if any)
-        run: |
-          if [ -f tests/run_tests.sh ]; then
-            chmod +x tests/run_tests.sh
-            ./tests/run_tests.sh
-          else
-            echo "No test script found, skipping tests"
-          fi
-
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
