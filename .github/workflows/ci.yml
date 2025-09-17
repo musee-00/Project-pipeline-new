@@ -23,78 +23,17 @@ jobs:
           g++ -std=c++17 src/*.cpp -o build/cpp-build
           echo "Build completed successfully"
 
+      - name: Run tests (if any)
+        run: |
+          if [ -f tests/run_tests.sh ]; then
+            chmod +x tests/run_tests.sh
+            ./tests/run_tests.sh
+          else
+            echo "No test script found, skipping tests"
+          fi
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: cpp-build
           path: build/cpp-build
-
-  release:
-    name: Create Release
-    needs: build-test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'   # only run on main
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: cpp-build
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ github.run_number }}
-          name: Release ${{ github.run_number }}
-          body: "Automated C++ release by CI/CD pipeline"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy:
-    name: Deploy to Server (SSH)
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: cpp-build
-
-      - name: Deploy via SSH (example)
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key build/cpp-build "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}"
-
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_HOST}" << 'EOF'
-            cd ${DEPLOY_PATH}
-            # Example: restart service
-            sudo systemctl restart myapp.service || true
-          EOF
-
-  integration:
-    name: Trigger System BITE (integration)
-    needs: build-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger system-wide BITE workflow
-        env:
-          SYSTEM_BITE_PAT: ${{ secrets.SYSTEM_BITE_PAT }}
-        run: |
-          curl -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $SYSTEM_BITE_PAT" \
-            https://api.github.com/repos/ORG/system-bite/actions/workflows/integration.yml/dispatches \
-            -d '{"ref":"main"}'
